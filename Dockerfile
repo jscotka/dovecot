@@ -1,34 +1,33 @@
-FROM registry.fedoraproject.org/fedora:26
+FROM {{ config.docker.registry }}/{{ config.docker.from }}
 
-ENV VERSION="0" RELEASE=1 NAME=dovecot ARCH=x86_64
-LABEL MAINTAINER "Petr Hracek" <phracek@redhat.com>
-LABEL   summary="Dovecot container for IMAP server." \
+ENV VERSION={{ spec.envvars.version }} \
+    RELEASE={{ spec.envvars.release }} \
+    NAME={{ spec.envvars.name }} \
+    ARCH={{ spec.envvars.arch }}
+LABEL maintainer {{ spec.maintainer }}
+LABEL   summary="{{ spec.short_description }}" \
         name="$FGC/$NAME" \
         version="$VERSION" \
         release="$RELEASE.$DISTTAG" \
         architecture="$ARCH" \
         com.redhat.component="$NAME" \
-        usage="docker run -it -e MYHOSTNAME=localhost -v $PASSWD=/etc/passwd --privileged -v $SHADOW=/etc/shadow dovecot" \
-        help="Runs dovecot. No dependencies. See Help File belowe for more detailes." \
-        description="Dovecot container for IMAP server." \
-        io.k8s.description="Dovecot container for IMAP server." \
+        usage="{{ spec.envvars.name }} run -it -e MYHOSTNAME=localhost -v /etc/dovecot:/etc/dovecot dovecot" \
+        help="Runs {{ spec.envvars.name }}. No dependencies. See Help File below for more details." \
+        description="{{ spec.short_description }}" \
+        io.k8s.description="{{ spec.short_description }}" \
         io.k8s.diplay-name="3.1" \
-        io.openshift.tags="dovecot"
+        io.openshift.tags="{{ spec.envvars.name }}"
 
-RUN dnf install -y --setopt=tsflags=nodocs \
-                 findutils openssl-libs \
-                 dovecot passwd shadow-utils postfix && \
-    dnf -y clean all
+RUN {{ commands.pkginstaller.install(["openssl-libs", "dovecot"])}} && \
+    {{ commands.pkginstaller.cleancache()}}
 
 ADD files /files
 ADD README.md /
 
 RUN /files/dovecot_config.sh
 
-# Postfix UID based from Fedora
-# USER 89
-
 VOLUME ["/var/spool/postfix"]
 VOLUME ["/var/spool/mail"]
+VOLUME ["/var/dovecot"]
 
 CMD ["/files/start.sh"]
